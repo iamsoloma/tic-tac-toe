@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 function Square({ value, onSquareClick }) {
   return (
-    <button className="square" onClick={onSquareClick}>
+    <button className="square" data-value={value} aria-label={value ? `Square ${value}` : 'Empty square'} onClick={onSquareClick}>
       {value}
     </button>
   );
@@ -10,7 +10,8 @@ function Square({ value, onSquareClick }) {
 
 function Board({ xIsNext, squares, onPlay }) {
   function handleClick(i) {
-    if (calculateWinner(squares) || squares[i]) {
+    const existingWin = calculateWinner(squares)
+    if (existingWin?.winner || squares[i]) {
       return;
     }
     const nextSquares = squares.slice();
@@ -22,31 +23,43 @@ function Board({ xIsNext, squares, onPlay }) {
     onPlay(nextSquares);
   }
 
-  const winner = calculateWinner(squares);
+  const win = calculateWinner(squares);
   let status;
-  if (winner) {
-    status = 'Winner: ' + winner;
+  if (win && win.winner) {
+    status = 'Winner: ' + win.winner;
   } else {
     status = 'Next player: ' + (xIsNext ? 'X' : 'O');
   }
 
+  function getWinClass(line){
+    if(!line) return ''
+    const [a,b,c] = line
+    // rows
+    if (a === 0 && b === 1 && c === 2) return 'row-0'
+    if (a === 3 && b === 4 && c === 5) return 'row-1'
+    if (a === 6 && b === 7 && c === 8) return 'row-2'
+    // cols
+    if (a === 0 && b === 3 && c === 6) return 'col-0'
+    if (a === 1 && b === 4 && c === 7) return 'col-1'
+    if (a === 2 && b === 5 && c === 8) return 'col-2'
+    // diags
+    if (a === 0 && b === 4 && c === 8) return 'diag-main'
+    if (a === 2 && b === 4 && c === 6) return 'diag-anti'
+    return ''
+  }
+
+  const winClass = win?.line ? getWinClass(win.line) : ''
+
   return (
     <>
       <div className="status">{status}</div>
-      <div className="board-row">
-        <Square value={squares[0]} onSquareClick={() => handleClick(0)} />
-        <Square value={squares[1]} onSquareClick={() => handleClick(1)} />
-        <Square value={squares[2]} onSquareClick={() => handleClick(2)} />
-      </div>
-      <div className="board-row">
-        <Square value={squares[3]} onSquareClick={() => handleClick(3)} />
-        <Square value={squares[4]} onSquareClick={() => handleClick(4)} />
-        <Square value={squares[5]} onSquareClick={() => handleClick(5)} />
-      </div>
-      <div className="board-row">
-        <Square value={squares[6]} onSquareClick={() => handleClick(6)} />
-        <Square value={squares[7]} onSquareClick={() => handleClick(7)} />
-        <Square value={squares[8]} onSquareClick={() => handleClick(8)} />
+      <div className="board-grid" role="grid" aria-label="Tic tac toe board">
+        {Array.from({length:9}).map((_,i)=> (
+          <Square key={i} value={squares[i]} onSquareClick={()=>handleClick(i)} />
+        ))}
+        {win?.line && (
+          <div className={`win-line ${winClass}`} aria-hidden="true"></div>
+        )}
       </div>
     </>
   );
@@ -109,7 +122,7 @@ function calculateWinner(squares) {
   for (let i = 0; i < lines.length; i++) {
     const [a, b, c] = lines[i];
     if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a];
+      return { winner: squares[a], line: [a, b, c] };
     }
   }
   return null;
